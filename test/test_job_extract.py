@@ -56,6 +56,17 @@ def go_to_next_page(driver):
     except Exception:
         return False
 
+def extract_job_link(card):
+    try:
+        link_element = card.find_element(By.CSS_SELECTOR, "a.job-card-container__link")
+        return link_element.get_attribute("href")
+    except Exception:
+        try:
+            link_element = card.find_element(By.CSS_SELECTOR, "a.job-card-list__title--link")
+            return link_element.get_attribute("href")
+        except Exception:
+            return ""
+
 def test_job_extraction():
     driver = None
     total_extracted = 0
