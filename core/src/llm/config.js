@@ -34,6 +34,17 @@ const config = {
         verbose: false
     },
 
+    // OpenRouter
+    openrouter: {
+        apiKey: process.env.OPENROUTER_API_KEY,
+        model: process.env.OPENROUTER_MODEL || 'openai/gpt-4o-mini',
+        temperature: parseFloat(process.env.OPENROUTER_TEMPERATURE) || 0.2,
+        maxTokens: parseInt(process.env.OPENROUTER_MAX_TOKENS) || 4096,
+        siteUrl: process.env.OPENROUTER_SITE_URL || 'http://localhost:3000',
+        siteName: process.env.OPENROUTER_SITE_NAME || 'Browser Agent',
+        verbose: false
+    },
+
     // Agent settings
     agent: {
         maxSteps: parseInt(process.env.AGENT_MAX_STEPS) || 50,
@@ -76,6 +87,12 @@ function validateConfig(provider = 'gemini') {
             break;
         case 'ollama':
             // No API key needed
+            break;
+        case 'openrouter':
+            if (!config.openrouter.apiKey) {
+                console.error('[error] OPENROUTER_API_KEY not set in .env');
+                process.exit(1);
+            }
             break;
         default:
             console.error(`[error] Unknown provider: ${provider}`);
