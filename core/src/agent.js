@@ -14,6 +14,7 @@ const { createAdapter, config } = require('./llm');
 const { parseAction, isTerminal, ActionExecutor } = require('./actions');
 const { simplifyHTML } = require('./scripts/simplify-html');
 const { AgentTUI } = require('./scripts/tui');
+const { ElementHighlighter } = require('./scripts/highlighter');
 
 class Agent {
     constructor(options = {}) {
@@ -43,6 +44,9 @@ class Agent {
 
         // TUI
         this.tui = this.options.useTUI ? new AgentTUI() : null;
+
+        // Visual highlighter (only when not headless)
+        this.highlighter = null;
     }
 
     generateSessionId() {
@@ -302,6 +306,12 @@ class Agent {
             await this.page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
             await this.page.waitForTimeout(2000); // Wait for page to stabilize
 
+            // Initialize highlighter if not headless
+            if (!this.options.headless) {
+                this.highlighter = new ElementHighlighter(this.page);
+                await this.highlighter.injectStyles();
+            }
+
             // Autonomous loop
             while (this.currentStep < this.options.maxSteps) {
                 this.currentStep++;
@@ -342,6 +352,12 @@ class Agent {
                 } else {
                     console.log(`  action: ${action.action_type}`);
                     console.log(`  reason: ${action.reasoning.substring(0, 100)}${action.reasoning.length > 100 ? '...' : ''}`);
+                }
+
+                // Visual highlight on the element before action
+                if (this.highlighter && action.element_id) {
+                    await this.highlighter.highlightAction(action.element_id, action.action_type);
+                    await this.highlighter.showToast(`${action.action_type.toUpperCase()}: ${action.element_id}`, 'action');
                 }
 
                 // Execute action
