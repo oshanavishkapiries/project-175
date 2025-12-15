@@ -1,0 +1,32 @@
+{
+  "name": "html-simplifier",
+  "version": "1.0.0",
+  "description": "HTML simplification and browser automation agent for AI/LLM processing",
+  "main": "src/agent.js",
+  "scripts": {
+    "agent": "node src/agent.js",
+    "simplify": "node src/simplify-html.js",
+    "tokens": "node src/count-tokens.js",
+    "tokens:save": "node src/count-tokens.js --save",
+    "extract": "node src/extract-html.js",
+    "clean": "node src/clean-data.js"
+  },
+  "keywords": [
+    "html",
+    "simplify",
+    "tokens",
+    "llm",
+    "ai",
+    "browser-automation",
+    "gemini"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@cerebras/cerebras_cloud_sdk": "^1.59.0",
+    "@google/generative-ai": "^0.21.0",
+    "dotenv": "^16.4.7",
+    "jsdom": "^22.1.0",
+    "playwright": "^1.57.0"
+  }
+}
