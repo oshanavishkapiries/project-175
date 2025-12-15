@@ -45,11 +45,10 @@ class Agent {
         this.llm = createAdapter(this.options.llmProvider);
         console.log(`[init] LLM: ${this.llm.getModelInfo().model}`);
 
-        // Launch browser using local Chrome TODO: this for local chrome
-        const chromePath = 'C:/Program Files/Google/Chrome/Application/chrome.exe';
+        // Launch browser using config from .env
         this.browser = await chromium.launch({
-            executablePath: chromePath,
-            headless: this.options.headless
+            executablePath: config.browser.chromePath,
+            headless: this.options.headless ?? config.browser.headless
         });
 
         const context = await this.browser.newContext({

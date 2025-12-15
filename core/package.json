@@ -5,11 +5,11 @@
   "main": "src/agent.js",
   "scripts": {
     "agent": "node src/agent.js",
-    "simplify": "node src/simplify-html.js",
-    "tokens": "node src/count-tokens.js",
-    "tokens:save": "node src/count-tokens.js --save",
-    "extract": "node src/extract-html.js",
-    "clean": "node src/clean-data.js"
+    "simplify": "node src/scripts/simplify-html.js",
+    "tokens": "node src/scripts/count-tokens.js",
+    "tokens:save": "node src/scripts/count-tokens.js --save",
+    "extract": "node src/scripts/extract-html.js",
+    "clean": "node src/scripts/clean-data.js"
   },
   "keywords": [
     "html",

@@ -6,10 +6,11 @@ const { config, validateConfig } = require('./config');
 const { BaseLLMAdapter } = require('./base-adapter');
 const { GeminiAdapter } = require('./gemini-adapter');
 const { CerebrasAdapter } = require('./cerebras-adapter');
+const { OllamaAdapter } = require('./ollama-adapter');
 
 /**
  * Create an LLM adapter based on provider name
- * @param {string} provider - Provider name ('gemini', 'cerebras', etc.)
+ * @param {string} provider - Provider name ('gemini', 'cerebras', 'ollama')
  * @returns {BaseLLMAdapter} - LLM adapter instance
  */
 function createAdapter(provider = 'gemini') {
@@ -20,6 +21,8 @@ function createAdapter(provider = 'gemini') {
             return new GeminiAdapter(config.gemini);
         case 'cerebras':
             return new CerebrasAdapter(config.cerebras);
+        case 'ollama':
+            return new OllamaAdapter(config.ollama);
         default:
             throw new Error(`Unknown LLM provider: ${provider}`);
     }
@@ -31,5 +34,6 @@ module.exports = {
     BaseLLMAdapter,
     GeminiAdapter,
     CerebrasAdapter,
+    OllamaAdapter,
     createAdapter
 };
