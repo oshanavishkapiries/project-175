@@ -73,13 +73,8 @@ class Agent {
             ignoreHTTPSErrors: true,
             args: [
                 '--disable-blink-features=AutomationControlled',
-                '--disable-automation',
-                '--disable-infobars',
-                '--disable-dev-shm-usage',
                 '--no-first-run',
-                '--no-default-browser-check',
-                '--no-sandbox',
-                '--disable-setuid-sandbox'
+                '--no-default-browser-check'
             ],
             ignoreDefaultArgs: ['--enable-automation']
         });
