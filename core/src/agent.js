@@ -4,7 +4,11 @@
  */
 const fs = require('fs');
 const path = require('path');
-const { chromium } = require('playwright');
+const { chromium } = require('playwright-extra');
+const StealthPlugin = require('puppeteer-extra-plugin-stealth');
+
+// Use stealth plugin to avoid bot detection
+chromium.use(StealthPlugin());
 
 const { createAdapter, config } = require('./llm');
 const { parseAction, isTerminal, ActionExecutor } = require('./actions');
@@ -17,7 +21,7 @@ class Agent {
             maxSteps: options.maxSteps ?? config.agent.maxSteps,
             waitBetweenActions: options.waitBetweenActions ?? config.agent.waitBetweenActions,
             verbose: options.verbose ?? config.agent.verbose,
-            llmProvider: options.llmProvider ?? 'gemini',
+            llmProvider: options.llmProvider ?? config.defaultProvider,
             ...options
         };
 
@@ -45,21 +49,39 @@ class Agent {
         this.llm = createAdapter(this.options.llmProvider);
         console.log(`[init] LLM: ${this.llm.getModelInfo().model}`);
 
-        // Launch browser using config from .env
-        this.browser = await chromium.launch({
+        // Use persistent browser profile (like a real human's browser)
+        const userDataDir = config.browser.userDataDir || path.join(__dirname, '..', 'data', 'browser-profile');
+
+        // Ensure profile directory exists
+        if (!fs.existsSync(userDataDir)) {
+            fs.mkdirSync(userDataDir, { recursive: true });
+        }
+
+        console.log(`[init] Profile: ${path.basename(userDataDir)}`);
+
+        // Launch persistent context (saves cookies, history, localStorage)
+        const context = await chromium.launchPersistentContext(userDataDir, {
             executablePath: config.browser.chromePath,
-            headless: this.options.headless ?? config.browser.headless
+            headless: this.options.headless ?? config.browser.headless,
+            viewport: { width: 1920, height: 1080 },
+            userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            locale: 'en-US',
+            timezoneId: 'Asia/Colombo',
+            ignoreHTTPSErrors: true,
+            args: [
+                '--disable-blink-features=AutomationControlled',
+                '--disable-infobars',
+                '--no-first-run',
+                '--no-default-browser-check'
+            ]
         });
 
-        const context = await this.browser.newContext({
-            viewport: { width: 1280, height: 800 },
-            userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-        });
-
-        this.page = await context.newPage();
+        // Store context as browser for compatibility
+        this.browser = context;
+        this.page = context.pages()[0] || await context.newPage();
         this.executor = new ActionExecutor(this.page);
 
-        console.log('[init] Browser ready');
+        console.log('[init] Browser ready (persistent profile)');
     }
 
     async close() {
@@ -73,6 +95,9 @@ class Agent {
      * Get simplified HTML and element map from current page
      */
     async getPageState() {
+        // Wait for page to be stable (not navigating)
+        await this.waitForPageStable();
+
         // Get current HTML
         const html = await this.page.content();
 
@@ -104,6 +129,28 @@ class Agent {
             elementMap: result.elementMap,
             url: this.page.url()
         };
+    }
+
+    /**
+     * Wait for page to be stable (not navigating)
+     */
+    async waitForPageStable() {
+        try {
+            // Wait for load state
+            await this.page.waitForLoadState('domcontentloaded', { timeout: 10000 });
+
+            // Additional wait for any pending navigation
+            await this.page.waitForTimeout(500);
+
+            // Wait for network to be idle (no more than 2 connections for 500ms)
+            await this.page.waitForLoadState('networkidle', { timeout: 5000 }).catch(() => {
+                // Network idle timeout is ok, page might have long-polling
+            });
+        } catch (error) {
+            // If timeout, page should still be usable
+            console.log('  [wait] page stabilizing...');
+            await this.page.waitForTimeout(2000);
+        }
     }
 
     /**
@@ -380,7 +427,7 @@ async function main() {
     }
 
     // Parse --llm flag
-    let llmProvider = 'gemini';
+    let llmProvider = config.defaultProvider;
     const llmIndex = args.indexOf('--llm');
     if (llmIndex !== -1 && args[llmIndex + 1]) {
         llmProvider = args[llmIndex + 1];

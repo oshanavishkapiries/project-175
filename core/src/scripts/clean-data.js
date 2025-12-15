@@ -6,7 +6,7 @@
 const fs = require('fs');
 const path = require('path');
 
-const dataDir = path.join(__dirname, '..', 'data');
+const dataDir = path.join(__dirname, '..', '..', 'data');
 
 // Folders to clean (remove all contents but keep the folder)
 const foldersToClean = [

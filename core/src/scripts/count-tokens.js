@@ -144,7 +144,7 @@ function countHTMLTokens(filePath, options = {}) {
 
     // Optionally save report to file
     if (options.saveReport) {
-        const projectRoot = options.projectRoot || path.resolve(__dirname, '..');
+        const projectRoot = options.projectRoot || path.resolve(__dirname, '..', '..');
         const reportDir = path.join(projectRoot, 'data', 'token-reports');
 
         if (!fs.existsSync(reportDir)) {

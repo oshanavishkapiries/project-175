@@ -457,7 +457,7 @@ function removeEmptyContainers(document) {
 
 function simplifyHTML(inputPath, options = {}) {
     // Options
-    const projectRoot = options.projectRoot || path.resolve(__dirname, '..');
+    const projectRoot = options.projectRoot || path.resolve(__dirname, '..', '..');
     const silent = options.silent || false;
     const log = silent ? () => { } : console.log.bind(console);
     const logError = silent ? () => { } : console.error.bind(console);

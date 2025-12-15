@@ -44,7 +44,8 @@ const config = {
     // Browser settings
     browser: {
         chromePath: process.env.CHROME_PATH || 'C:/Program Files/Google/Chrome/Application/chrome.exe',
-        headless: process.env.HEADLESS === 'true'
+        headless: process.env.HEADLESS === 'true',
+        userDataDir: process.env.BROWSER_PROFILE_DIR || null  // null = use default in data/browser-profile
     }
 };
 
