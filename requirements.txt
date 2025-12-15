@@ -1,5 +1,0 @@
-# LinkedIn Job Automator - Python Dependencies
-
-selenium>=4.15.0
-webdriver-manager>=4.0.0
-python-dotenv>=1.0.0
