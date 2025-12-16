@@ -15,7 +15,8 @@ const foldersToClean = [
     'simplified-html',
     'output',
     'temp',
-    'token-reports'
+    'token-reports',
+    'logs'
 ];
 
 // Folders to keep with their contents

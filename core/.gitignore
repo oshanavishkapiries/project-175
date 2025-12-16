@@ -5,12 +5,12 @@ node_modules/
 .env
 
 # Generated data (clean with: npm run clean)
-data/action-logs/
-data/element-map/
-data/simplified-html/
-data/output/
-data/temp/
-data/token-reports/
+# data/action-logs/
+# data/element-map/
+# data/simplified-html/
+# data/output/
+# data/temp/
+# data/token-reports/
 
 # Keep html-pages folder but ignore specific files if needed
 # !data/html-pages/

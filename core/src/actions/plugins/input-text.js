@@ -1,5 +1,6 @@
 /**
  * Input Text Action Plugin
+ * With smart fallback for finding input fields and visibility checks
  */
 const { BaseAction } = require('../base-action');
 
@@ -12,64 +13,42 @@ class InputTextAction extends BaseAction {
         try {
             let element = null;
             let elementInfo = null;
+            let foundViaFallback = false;
 
             // Try to get element by ID first
             try {
                 element = await this.getElement(element_id);
                 elementInfo = this.elementMap[element_id];
             } catch (e) {
-                // Element not found - try to find input field by common selectors
-                console.log(`  [input_text] Element ${element_id} not found, searching for input...`);
-
-                // Try common search input selectors
-                const selectors = [
-                    'input[name="q"]',           // Google
-                    'input[type="search"]',
-                    'input[aria-label*="Search"]',
-                    'input[aria-label*="search"]',
-                    'textarea[name="q"]',
-                    '[role="searchbox"]',
-                    'input[name="search"]',
-                    'input[placeholder*="Search"]'
-                ];
-
-                for (const selector of selectors) {
-                    element = await this.page.$(selector);
-                    if (element) {
-                        console.log(`  [input_text] Found input via: ${selector}`);
-                        break;
-                    }
-                }
-
-                if (!element) {
-                    // Last resort: find any visible text input
-                    const inputs = await this.page.$$('input[type="text"], input:not([type])');
-                    for (const inp of inputs) {
-                        const box = await inp.boundingBox();
-                        if (box && box.width > 100) {
-                            element = inp;
-                            console.log(`  [input_text] Found generic text input`);
-                            break;
-                        }
-                    }
-                }
-
-                if (!element) {
-                    return { success: false, error: `Could not find element ${element_id} or any suitable input field` };
-                }
+                foundViaFallback = true;
+                console.log(`  [input_text] Element ${element_id} not found, searching...`);
+                element = await this.findVisibleInput();
             }
 
-            // Clear existing content first
-            await element.fill('');
+            if (!element) {
+                return { success: false, error: `Could not find element ${element_id} or any suitable input field` };
+            }
 
-            // Type the new text
-            await element.fill(text || '');
+            // Click first to focus (important for Google and other sites)
+            try {
+                await element.click({ timeout: 2000 });
+                await this.page.waitForTimeout(300);
+            } catch (e) {
+                // Try focus if click fails
+                await element.focus().catch(() => { });
+            }
 
-            // Check if this is a search input - might need Enter key
-            if (this.isSearchInput(elementInfo)) {
-                console.log(`  [input_text] Auto-pressing Enter for search input`);
+            // Clear and fill
+            await element.fill('', { timeout: 5000 });
+            await element.fill(text || '', { timeout: 5000 });
+
+            // Auto-press Enter for search inputs
+            const isSearch = this.isSearchInput(elementInfo) || await this.looksLikeSearch(element);
+            if (isSearch) {
+                console.log(`  [input_text] Pressing Enter for search`);
                 await this.page.keyboard.press('Enter');
-                await this.page.waitForTimeout(1000);
+                await this.page.waitForLoadState('domcontentloaded', { timeout: 10000 }).catch(() => { });
+                await this.page.waitForTimeout(1500);
             }
 
             return { success: true };
@@ -78,20 +57,69 @@ class InputTextAction extends BaseAction {
         }
     }
 
+    async findVisibleInput() {
+        // Priority order - Google uses textarea now
+        const selectors = [
+            'textarea[name="q"]',              // Google main search
+            'input[name="q"]',                 // Google fallback
+            'textarea[aria-label*="Search"]',
+            'input[type="search"]',
+            '[role="combobox"]',
+            '[role="searchbox"]',
+            'input[aria-label*="Search"]',
+            'input[placeholder*="Search"]',
+            'input[name="search"]'
+        ];
+
+        for (const selector of selectors) {
+            const els = await this.page.$$(selector);
+            for (const el of els) {
+                const box = await el.boundingBox();
+                // Check visibility: has size and is in viewport
+                if (box && box.width > 50 && box.height > 15) {
+                    console.log(`  [input_text] Found via: ${selector}`);
+                    return el;
+                }
+            }
+        }
+
+        // Last resort: any visible text input
+        const inputs = await this.page.$$('input[type="text"], input:not([type]), textarea');
+        for (const inp of inputs) {
+            const box = await inp.boundingBox();
+            if (box && box.width > 100 && box.height > 15) {
+                console.log(`  [input_text] Found generic input`);
+                return inp;
+            }
+        }
+
+        return null;
+    }
+
+    async looksLikeSearch(element) {
+        try {
+            const name = await element.getAttribute('name');
+            const type = await element.getAttribute('type');
+            const ariaLabel = await element.getAttribute('aria-label') || '';
+
+            return name === 'q' ||
+                type === 'search' ||
+                ariaLabel.toLowerCase().includes('search');
+        } catch {
+            return false;
+        }
+    }
+
     isSearchInput(elementInfo) {
         if (!elementInfo) return false;
-
-        const searchIndicators = [
+        return [
             elementInfo.type === 'search',
             elementInfo.name?.toLowerCase()?.includes('search'),
-            elementInfo.name?.toLowerCase()?.includes('query'),
             elementInfo.name === 'q',
             elementInfo['aria-label']?.toLowerCase()?.includes('search'),
             elementInfo.placeholder?.toLowerCase()?.includes('search'),
             elementInfo.role === 'searchbox'
-        ];
-
-        return searchIndicators.some(Boolean);
+        ].some(Boolean);
     }
 }
 

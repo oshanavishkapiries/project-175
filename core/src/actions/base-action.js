@@ -40,13 +40,27 @@ class BaseAction {
             throw new Error(`Element ${elementId} not found in map`);
         }
 
-        // Try by data-uuid first
-        let element = await this.page.$(`[data-uuid="${elementId}"]`);
+        let element = null;
 
-        // Fallback to XPath
-        if (!element && elementInfo.xpath) {
-            const elements = await this.page.$$(`:xpath(${elementInfo.xpath})`).catch(() => []);
-            element = elements[0];
+        // Primary method: XPath (since data-uuid only exists in simplified HTML, not on actual page)
+        if (elementInfo.xpath) {
+            try {
+                // Use evaluate for XPath
+                element = await this.page.locator(`xpath=${elementInfo.xpath}`).first().elementHandle();
+            } catch (e) {
+                // XPath might be invalid or element not found
+            }
+        }
+
+        // Fallback: Try by common attributes
+        if (!element && elementInfo.name) {
+            element = await this.page.$(`[name="${elementInfo.name}"]`);
+        }
+        if (!element && elementInfo['aria-label']) {
+            element = await this.page.$(`[aria-label="${elementInfo['aria-label']}"]`);
+        }
+        if (!element && elementInfo.type && elementInfo.tag === 'input') {
+            element = await this.page.$(`input[type="${elementInfo.type}"]`);
         }
 
         if (!element) {

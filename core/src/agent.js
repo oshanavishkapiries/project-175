@@ -11,6 +11,7 @@ const { AgentFactory } = require('./agent-factory');
 const { config } = require('./llm');
 const { AgentMemory } = require('./agent-memory');
 const { GoalPlanner } = require('./goal-planner');
+const { ActionVerifier } = require('./action-verifier');
 
 class Agent {
     /**
@@ -29,6 +30,7 @@ class Agent {
         // Runtime state
         this.executor = null;
         this.highlighter = null;
+        this.verifier = null;
         this.currentStep = 0;
 
         // Memory & Planning
@@ -49,6 +51,9 @@ class Agent {
 
         // Create executor for the page
         this.executor = AgentFactory.createExecutor(page);
+
+        // Create action verifier
+        this.verifier = new ActionVerifier(page);
 
         // Create highlighter if not headless
         if (!this.options.headless) {
@@ -124,6 +129,7 @@ class Agent {
 
                 // Get page state
                 const pageState = await this.pageStateExtractor.getState(this.sessionManager.getId());
+                const pageUrlBeforeLLM = pageState.url;
                 this.executor.setElementMap(pageState.elementMap);
 
                 if (this.tui) {
@@ -154,6 +160,18 @@ class Agent {
                 const rawAction = await this.llm.generateAction(context);
                 const action = parseAction(rawAction, pageState.elementMap);
 
+                // STALENESS CHECK: Did page change during LLM call?
+                const currentUrl = this.browserManager.getPage().url();
+                if (currentUrl !== pageUrlBeforeLLM) {
+                    this.log('Page changed during LLM call, refreshing...', 'warning');
+                    this.memory.observe('Page changed while waiting for LLM response');
+                    // Refresh element map with new page state
+                    const freshState = await this.pageStateExtractor.getState(this.sessionManager.getId());
+                    this.executor.setElementMap(freshState.elementMap);
+                    // Skip this action and re-evaluate on next loop
+                    continue;
+                }
+
                 // Display action
                 if (this.tui) {
                     this.tui.setStatus('acting');
@@ -169,22 +187,43 @@ class Agent {
                     await this.highlighter.showToast(`${action.action_type.toUpperCase()}: ${action.element_id}`, 'action');
                 }
 
+                // Capture state before action for verification
+                await this.verifier.captureState();
+
                 // Execute action
                 const result = await this.executor.execute(action);
 
-                // Update memory
+                // Verify action caused expected changes
+                const verification = await this.verifier.verify(action.action_type);
+                const feedback = this.verifier.generateFeedback(action.action_type, verification);
+
+                // Log verification result
+                if (!verification.likely_succeeded) {
+                    this.log(verification.message, 'warning');
+                    this.memory.observe(verification.message);
+                } else if (verification.urlChanged) {
+                    this.log(feedback, 'nav');
+                }
+
+                // Update memory with action and verification
                 this.memory.addAction({
                     step: this.currentStep,
                     action_type: action.action_type,
                     element_id: action.element_id,
-                    success: result.success
+                    success: result.success,
+                    verified: verification.likely_succeeded,
+                    pageChanged: verification.urlChanged || verification.contentChanged
                 });
 
                 // Log action to session
                 this.sessionManager.logAction({
                     step: this.currentStep,
                     ...action,
-                    result: { success: result.success, error: result.error }
+                    result: {
+                        success: result.success,
+                        error: result.error,
+                        verification: verification
+                    }
                 });
 
                 // Check for terminal actions
