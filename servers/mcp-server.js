@@ -13,7 +13,7 @@
 
 // Load environment variables (CRITICAL for CHROME_PATH)
 const path = require('path');
-require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
+require('dotenv').config({ path: path.join(__dirname, '..', 'core', '.env') });
 
 const { Server } = require('@modelcontextprotocol/sdk/server/index.js');
 const { StdioServerTransport } = require('@modelcontextprotocol/sdk/server/stdio.js');
@@ -31,8 +31,8 @@ console.log = (...args) => {
     console.error('[mcp-redirect]', ...args);
 };
 
-const { BrowserAutomationAPI, runAgent } = require('../index');
-const { DirectBrowserController } = require('../src/browser/direct-browser-controller');
+const { BrowserAutomationAPI, runAgent } = require('../core');
+const { DirectBrowserController } = require('../core/src/browser/direct-browser-controller');
 
 // Server state
 let currentSession = null;

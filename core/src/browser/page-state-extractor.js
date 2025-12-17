@@ -8,7 +8,11 @@ const path = require('path');
 class PageStateExtractor {
     constructor(browserManager, options = {}) {
         this.browserManager = browserManager;
-        this.tempDir = options.tempDir || path.join(__dirname, '..', '..', 'data', 'temp');
+        const baseDataDir = process.env.DATA_DIR
+            ? path.resolve(process.env.DATA_DIR)
+            : path.join(__dirname, '..', '..', 'data');
+
+        this.tempDir = options.tempDir || path.join(baseDataDir, 'temp');
         this.silent = options.silent || false;
     }
 

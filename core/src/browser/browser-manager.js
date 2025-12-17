@@ -13,11 +13,15 @@ const { chromium } = require('playwright');
 
 class BrowserManager {
     constructor(config = {}) {
+        const baseDataDir = process.env.DATA_DIR
+            ? path.resolve(process.env.DATA_DIR)
+            : path.join(__dirname, '..', '..', 'data');
+
         this.config = {
             headless: config.headless ?? false,
-            userDataDir: config.userDataDir || path.join(__dirname, '..', '..', 'data', 'browser-profile'),
+            userDataDir: config.userDataDir || path.join(baseDataDir, 'browser-profile'),
             chromePath: config.chromePath || null,
-            viewport: config.viewport || { width: 1920, height: 1080 },
+            viewport: config.viewport || { width: 1024, height: 768 },
             userAgent: config.userAgent || 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
             locale: config.locale || 'en-US',
             timezoneId: config.timezoneId || 'Asia/Colombo'

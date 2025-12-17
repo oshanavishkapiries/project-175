@@ -6,9 +6,13 @@ const path = require('path');
 
 class SessionManager {
     constructor(outputDirs = {}) {
+        const baseDataDir = process.env.DATA_DIR
+            ? path.resolve(process.env.DATA_DIR)
+            : path.join(__dirname, '..', '..', 'data');
+
         this.outputDirs = {
-            logs: outputDirs.logs || path.join(__dirname, '..', '..', 'data', 'logs'),
-            output: outputDirs.output || path.join(__dirname, '..', '..', 'data', 'output')
+            logs: outputDirs.logs || path.join(baseDataDir, 'logs'),
+            output: outputDirs.output || path.join(baseDataDir, 'output')
         };
 
         this.sessionId = this.generateId();
@@ -84,7 +88,7 @@ class SessionManager {
     ensureDirs() {
         Object.values(this.outputDirs).forEach(dir => {
             if (!fs.existsSync(dir)) {
-                fs.mkdirSync(dir, {recursive: true});
+                fs.mkdirSync(dir, { recursive: true });
             }
         });
     }
@@ -117,7 +121,7 @@ class SessionManager {
         const logFilename = `log_${this.sessionId}.json`;
         const logPath = path.join(this.outputDirs.logs, logFilename);
         fs.writeFileSync(logPath, JSON.stringify(this.actionLog, null, 2));
-        results.outputFiles.push({type: 'log', path: logPath});
+        results.outputFiles.push({ type: 'log', path: logPath });
 
         // Save extracted data if present
         if (this.extractedData) {
@@ -125,7 +129,7 @@ class SessionManager {
             const outputPath = path.join(this.outputDirs.output, outputFilename);
             fs.writeFileSync(outputPath, JSON.stringify(this.extractedData, null, 2));
             console.log(`📋 Saved JSON: ${outputFilename}`);
-            results.outputFiles.push({type: 'output', path: outputPath});
+            results.outputFiles.push({ type: 'output', path: outputPath });
         }
 
         return results;
@@ -145,4 +149,4 @@ class SessionManager {
     }
 }
 
-module.exports = {SessionManager};
+module.exports = { SessionManager };

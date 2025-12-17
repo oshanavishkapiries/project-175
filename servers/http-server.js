@@ -20,8 +20,11 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 
+// Load env from core directory
+require('dotenv').config({ path: path.join(__dirname, '..', 'core', '.env') });
+
 // Import from core
-const { BrowserAutomationAPI, runAgent, executeWorkflow } = require('../index');
+const { BrowserAutomationAPI, runAgent, executeWorkflow } = require('../core');
 
 const app = express();
 const PORT = process.env.HTTP_PORT || 3000;
