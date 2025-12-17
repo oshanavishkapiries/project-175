@@ -29,8 +29,8 @@ class PageStateExtractor {
         await this.waitForStable();
 
         const page = this.browserManager.getPage();
-        console.log('DEBUG: Page keys:', Object.keys(page));
-        console.log('DEBUG: accessibility namespace:', page.accessibility); // Should be object
+        //console.log('DEBUG: Page keys:', Object.keys(page));
+        //console.log('DEBUG: accessibility namespace:', page.accessibility); // Should be object
         const url = page.url();
 
         // Capture Accessibility Tree
