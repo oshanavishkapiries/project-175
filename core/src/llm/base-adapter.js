@@ -7,6 +7,8 @@
 const { RateLimiter } = require('./rate-limiter');
 const { config: globalConfig } = require('./config');
 
+const { registry } = require('../actions/action-registry');
+
 class BaseLLMAdapter {
   constructor(config) {
     this.config = config;
@@ -90,29 +92,7 @@ ${simplifiedHtml?.substring(0, 15000) || 'No HTML available'}
 \`\`\`
 
 ## Available Actions
-
-### Element-based actions
-- click: Click element. Requires: element_id
-- input_text: Type into input. Requires: element_id, text. Optional: press_enter (auto-detected for search inputs)
-- select_option: Select dropdown. Requires: element_id, option
-- hover: Hover element. Requires: element_id
-
-### Keyboard actions
-- type_text: Simulate typing. Requires: text
-- keypress: Press keys. Requires: keys (array)
-
-### Navigation actions
-- scroll: Scroll page. Requires: direction, amount
-- goto_url: Navigate. Requires: url
-- go_back / go_forward / reload
-
-### Control actions
-- wait: Wait seconds. Requires: seconds
-
-### Data Extraction & Completion
-- extract: Extract data from page and continue. Use when you find useful data mid-task.
-- complete: Task done. Use when goal is achieved.
-- terminate: Cannot complete. Use when goal is impossible.
+${registry.generatePromptDocs()}
 
 ## IMPORTANT: Complex Page Navigation Tips
 
