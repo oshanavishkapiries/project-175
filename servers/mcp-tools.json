@@ -87,6 +87,41 @@
     }
   },
   {
+    "name": "direct_generate_csv",
+    "description": "[DIRECT MODE] Save data to a CSV file",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "filename": {
+          "type": "string",
+          "description": "Name of the file (e.g. products.csv)"
+        },
+        "data": {
+          "type": "array",
+          "description": "Array of objects to write to CSV",
+          "items": {
+            "type": "object"
+          }
+        },
+        "headers": {
+          "type": "array",
+          "description": "Optional list of headers (if not provided, keys from first object are used)",
+          "items": {
+            "type": "string"
+          }
+        },
+        "append": {
+          "type": "boolean",
+          "description": "If true, append to existing file instead of overwriting"
+        }
+      },
+      "required": [
+        "filename",
+        "data"
+      ]
+    }
+  },
+  {
     "name": "direct_goto_url",
     "description": "[DIRECT MODE] Navigate to a URL",
     "inputSchema": {
