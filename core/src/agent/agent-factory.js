@@ -24,6 +24,11 @@ class AgentFactory {
         const useTUI = options.useTUI ?? true;
         const llmProvider = options.llmProvider ?? config.defaultProvider;
 
+        // Base data directory - respects DATA_DIR environment variable
+        const baseDataDir = process.env.DATA_DIR
+            ? path.resolve(process.env.DATA_DIR)
+            : path.join(__dirname, '..', '..', 'data');
+
         // Create browser manager
         const browserManager = new BrowserManager({
             headless,
@@ -33,14 +38,14 @@ class AgentFactory {
 
         // Create cookie manager (needs browserManager)
         const cookieManager = new CookieManager(
-            path.join(__dirname, '..', 'data', 'cookies'),
+            path.join(baseDataDir, 'cookies'),
             browserManager
         );
 
         // Create session manager
         const sessionManager = new SessionManager({
-            logs: path.join(__dirname, '..', 'data', 'logs'),
-            output: path.join(__dirname, '..', 'data', 'output')
+            logs: path.join(baseDataDir, 'logs'),
+            output: path.join(baseDataDir, 'output')
         });
 
         // Create page state extractor

@@ -9,7 +9,12 @@ const { chromium } = require('playwright');
 async function testCookies() {
     console.log('\n=== Cookie Loading Test ===\n');
 
-    const cookiesDir = path.join(__dirname, '..', 'data', 'cookies');
+    // Base data directory - respects DATA_DIR environment variable
+    const baseDataDir = process.env.DATA_DIR
+        ? path.resolve(process.env.DATA_DIR)
+        : path.join(__dirname, '..', '..', 'data');
+
+    const cookiesDir = path.join(baseDataDir, 'cookies');
     const cookieFile = path.join(cookiesDir, 'linkedin.com.json');
 
     // 1. Check cookie file
@@ -116,7 +121,7 @@ async function testCookies() {
     console.log('   li_at present:', li_at ? 'YES' : 'NO');
 
     // Screenshot
-    const ssPath = path.join(__dirname, '..', 'data', 'cookie-test.png');
+    const ssPath = path.join(baseDataDir, 'cookie-test.png');
     await page.screenshot({ path: ssPath });
     console.log('\n[9] Screenshot saved:', ssPath);
 

@@ -144,8 +144,13 @@ function countHTMLTokens(filePath, options = {}) {
 
     // Optionally save report to file
     if (options.saveReport) {
+        // Base data directory - respects DATA_DIR environment variable
+        const baseDataDir = process.env.DATA_DIR
+            ? path.resolve(process.env.DATA_DIR)
+            : path.join(__dirname, '..', '..', 'data');
+        
         const projectRoot = options.projectRoot || path.resolve(__dirname, '..', '..');
-        const reportDir = path.join(projectRoot, 'data', 'token-reports');
+        const reportDir = path.join(baseDataDir, 'token-reports');
 
         if (!fs.existsSync(reportDir)) {
             fs.mkdirSync(reportDir, { recursive: true });

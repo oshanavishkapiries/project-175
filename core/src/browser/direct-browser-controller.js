@@ -76,13 +76,18 @@ class DirectBrowserController {
             throw new Error('Browser already open. Call close() first.');
         }
 
+        // Base data directory - respects DATA_DIR environment variable
+        const baseDataDir = process.env.DATA_DIR
+            ? path.resolve(process.env.DATA_DIR)
+            : path.join(__dirname, '..', '..', 'data');
+
         // Initialize browser
         this.browserManager = new BrowserManager(this.options);
         await this.browserManager.launch();
 
         // Initialize cookie manager
         this.cookieManager = new CookieManager(
-            path.join(__dirname, '..', 'data', 'cookies'),
+            path.join(baseDataDir, 'cookies'),
             this.browserManager
         );
 
