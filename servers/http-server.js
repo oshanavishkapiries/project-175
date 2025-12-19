@@ -24,7 +24,9 @@ const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '..', 'core', '.env') });
 
 // Import from core
-const { BrowserAutomationAPI, runAgent, executeWorkflow } = require('../core');
+const { BrowserAutomationAPI, runAgent, executeWorkflow, SkillOrchestrator, skills, BrowserManager, createAdapter } = require('../core');
+const { PageStateExtractor } = require('../core/src/browser/page-state-extractor');
+const { ActionExecutor } = require('../core/src/actions');
 const { SSEServerTransport } = require('@modelcontextprotocol/sdk/server/sse.js');
 const { createMcpServer } = require('./mcp-setup');
 
@@ -184,6 +186,145 @@ app.post('/api/workflow', async (req, res) => {
         res.json(result);
     } catch (error) {
         res.status(500).json({ error: error.message });
+    }
+});
+
+// ============================================================================
+// Skills Endpoints
+// ============================================================================
+
+/**
+ * GET /api/skills
+ * List all available skills
+ */
+app.get('/api/skills', (req, res) => {
+    const orchestrator = new SkillOrchestrator(null);
+    orchestrator.loadPlugins();
+    const skillsMetadata = orchestrator.getSkillsMetadata();
+    res.json({
+        count: skillsMetadata.length,
+        skills: skillsMetadata
+    });
+});
+
+/**
+ * POST /api/skill
+ * Execute a skill with natural language command
+ * 
+ * Body: { command: string, options?: { headless?: boolean, llmProvider?: string } }
+ */
+app.post('/api/skill', async (req, res) => {
+    const { command, options = {} } = req.body;
+
+    if (!command) {
+        return res.status(400).json({ error: 'command is required' });
+    }
+
+    console.log(`[skill] Processing: "${command.substring(0, 50)}..."`);
+
+    let browserManager = null;
+
+    try {
+        // Create dependencies
+        browserManager = new BrowserManager({
+            headless: options.headless ?? true,
+            chromePath: process.env.CHROME_PATH
+        });
+
+        const llmAdapter = createAdapter(options.llmProvider || 'gemini');
+
+        // Create orchestrator
+        const orchestrator = new SkillOrchestrator(llmAdapter);
+        orchestrator.loadPlugins();
+
+        // Launch browser
+        const { page } = await browserManager.launch();
+        const executor = new ActionExecutor(page);
+
+        // Dependencies for skills
+        const deps = {
+            browserManager,
+            executor,
+            llm: llmAdapter,
+            pageStateExtractor: new PageStateExtractor(page)
+        };
+
+        // Route and execute
+        const result = await orchestrator.routeAndExecute(command, deps);
+
+        console.log(`[skill] Completed: ${result.success ? 'success' : 'failed'}`);
+        res.json(result);
+
+    } catch (error) {
+        console.error(`[skill] Error: ${error.message}`);
+        res.status(500).json({ error: error.message });
+    } finally {
+        if (browserManager) {
+            await browserManager.close();
+        }
+    }
+});
+
+/**
+ * POST /api/skill/:type
+ * Execute a specific skill directly
+ * 
+ * Body: { args: object, options?: object }
+ */
+app.post('/api/skill/:type', async (req, res) => {
+    const { type } = req.params;
+    const { args = {}, options = {} } = req.body;
+
+    console.log(`[skill] Direct execute: ${type}`);
+
+    let browserManager = null;
+
+    try {
+        // Create dependencies
+        browserManager = new BrowserManager({
+            headless: options.headless ?? true,
+            chromePath: process.env.CHROME_PATH
+        });
+
+        const llmAdapter = createAdapter(options.llmProvider || 'gemini');
+
+        // Create orchestrator
+        const orchestrator = new SkillOrchestrator(llmAdapter);
+        orchestrator.loadPlugins();
+
+        // Check skill exists
+        if (!orchestrator.skills.has(type)) {
+            return res.status(404).json({
+                error: `Skill not found: ${type}`,
+                available: orchestrator.getSkillsMetadata().map(s => s.type)
+            });
+        }
+
+        // Launch browser
+        const { page } = await browserManager.launch();
+        const executor = new ActionExecutor(page);
+
+        // Dependencies for skills
+        const deps = {
+            browserManager,
+            executor,
+            llm: llmAdapter,
+            pageStateExtractor: new PageStateExtractor(page)
+        };
+
+        // Execute skill directly
+        const result = await orchestrator.execute(type, args, deps);
+
+        console.log(`[skill] ${type} completed: ${result.success ? 'success' : 'failed'}`);
+        res.json(result);
+
+    } catch (error) {
+        console.error(`[skill] ${type} error: ${error.message}`);
+        res.status(500).json({ error: error.message });
+    } finally {
+        if (browserManager) {
+            await browserManager.close();
+        }
     }
 });
 
@@ -369,6 +510,11 @@ app.listen(PORT, () => {
 ║     POST /api/workflow  - Execute .wky workflow        ║
 ║     GET  /api/status    - Server status                ║
 ║     GET  /api/health    - Health check                 ║
+║                                                        ║
+║   Skills:                                              ║
+║     GET  /api/skills         - List available skills   ║
+║     POST /api/skill          - Execute skill (NL)      ║
+║     POST /api/skill/:type    - Execute skill directly  ║
 ║                                                        ║
 ║   Sessions:                                            ║
 ║     POST   /api/session      - Create session          ║

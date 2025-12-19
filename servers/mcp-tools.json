@@ -26,6 +26,65 @@
     }
   },
   {
+    "name": "skill_run",
+    "description": "[SKILL MODE] Execute a specialized skill with natural language. Skills are optimized for specific tasks like scraping Google Maps, applying to LinkedIn jobs, etc.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "command": {
+          "type": "string",
+          "description": "Natural language command (e.g., \"scrape 20 coffee shops in London from google maps\")"
+        },
+        "headless": {
+          "type": "boolean",
+          "description": "Run browser in headless mode",
+          "default": true
+        },
+        "llmProvider": {
+          "type": "string",
+          "description": "LLM provider for skill routing",
+          "default": "gemini"
+        }
+      },
+      "required": [
+        "command"
+      ]
+    }
+  },
+  {
+    "name": "skill_list",
+    "description": "[SKILL MODE] List all available skills and their descriptions.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {}
+    }
+  },
+  {
+    "name": "skill_execute",
+    "description": "[SKILL MODE] Execute a specific skill by type with explicit arguments.",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "skillType": {
+          "type": "string",
+          "description": "Skill type (e.g., \"maps_scraper\")"
+        },
+        "args": {
+          "type": "object",
+          "description": "Arguments for the skill (e.g., {\"query\": \"coffee shops\", \"location\": \"London\", \"count\": 20})"
+        },
+        "headless": {
+          "type": "boolean",
+          "description": "Run browser in headless mode",
+          "default": true
+        }
+      },
+      "required": [
+        "skillType"
+      ]
+    }
+  },
+  {
     "name": "direct_open",
     "description": "[DIRECT MODE] Open browser and navigate to URL. Returns page state with elements you can interact with.",
     "inputSchema": {

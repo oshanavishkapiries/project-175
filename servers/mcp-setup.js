@@ -11,9 +11,10 @@ const {
     ListResourcesRequestSchema,
     ReadResourceRequestSchema
 } = require('@modelcontextprotocol/sdk/types.js');
-const { runAgent } = require('../core');
+const { runAgent, SkillOrchestrator, BrowserManager, createAdapter } = require('../core');
 const { DirectBrowserController } = require('../core/src/browser/direct-browser-controller');
-const { registry } = require('../core/src/actions/action-registry');
+const { PageStateExtractor } = require('../core/src/browser/page-state-extractor');
+const { ActionExecutor, registry } = require('../core/src/actions');
 const tools = require('./mcp-tools.json');
 
 // Ensure plugins are loaded
@@ -76,7 +77,76 @@ function createMcpServer() {
                 };
             }
 
-            // 2. Static Direct Tools Handlers
+            // 2. Skill Mode Handlers
+            if (name === 'skill_list') {
+                const orchestrator = new SkillOrchestrator(null);
+                orchestrator.loadPlugins();
+                const skillsMetadata = orchestrator.getSkillsMetadata();
+
+                return {
+                    content: [{
+                        type: 'text',
+                        text: `Available Skills (${skillsMetadata.length}):\n\n` +
+                            skillsMetadata.map(s =>
+                                `• **${s.type}**: ${s.description}\n  Triggers: ${s.triggers.join(', ')}`
+                            ).join('\n\n')
+                    }]
+                };
+            }
+
+            if (name === 'skill_run' || name === 'skill_execute') {
+                let browserManager = null;
+
+                try {
+                    browserManager = new BrowserManager({
+                        headless: args.headless ?? true,
+                        chromePath: process.env.CHROME_PATH
+                    });
+
+                    const llmAdapter = createAdapter(args.llmProvider || 'gemini');
+                    const orchestrator = new SkillOrchestrator(llmAdapter);
+                    orchestrator.loadPlugins();
+
+                    const { page } = await browserManager.launch();
+                    const executor = new ActionExecutor(page);
+
+                    const deps = {
+                        browserManager,
+                        executor,
+                        llm: llmAdapter,
+                        pageStateExtractor: new PageStateExtractor(page)
+                    };
+
+                    let result;
+                    if (name === 'skill_run') {
+                        result = await orchestrator.routeAndExecute(args.command, deps);
+                    } else {
+                        result = await orchestrator.execute(args.skillType, args.args || {}, deps);
+                    }
+
+                    actionLogs.push({
+                        timestamp: new Date().toISOString(),
+                        tool: name,
+                        command: args.command || args.skillType,
+                        result: result.success
+                    });
+
+                    return {
+                        content: [{
+                            type: 'text',
+                            text: result.success
+                                ? `✅ Skill completed successfully!\n\n${JSON.stringify(result.result, null, 2)}`
+                                : `❌ Skill failed: ${result.error}\n\nRouting: ${JSON.stringify(result.routing, null, 2)}`
+                        }]
+                    };
+                } finally {
+                    if (browserManager) {
+                        await browserManager.close();
+                    }
+                }
+            }
+
+            // 3. Static Direct Tools Handlers
             switch (name) {
                 case 'direct_open': {
                     if (directController) {
@@ -139,7 +209,7 @@ function createMcpServer() {
                     break;
             }
 
-            // 3. Dynamic Direct Tools Handler
+            // 4. Dynamic Direct Tools Handler
             if (name.startsWith('direct_')) {
                 ensureDirectController();
 
